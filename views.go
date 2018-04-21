@@ -45,3 +45,19 @@ func ViewObjectPut(w http.ResponseWriter, r *http.Request) {
 		myObjects = append(myObjects, &MyObject{objectKey, data})
 	}
 }
+
+func ViewObjectDelete(w http.ResponseWriter, r *http.Request) {
+	objectKey := chi.URLParam(r, "objectKey")
+	if !validata_key(objectKey) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	i, obj := getObject(myObjects, objectKey)
+	if obj != nil {
+		myObjects = append(myObjects[:i], myObjects[i+1:]...)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+}

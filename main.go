@@ -19,7 +19,7 @@ func main() {
 				//router.Use(ObjectCtx)
 				router.Get("/", ViewObjectGet)
 				router.Put("/", ViewObjectPut)
-				//router.Delete("/", DeleteObject)
+				router.Delete("/", ViewObjectDelete)
 			})
 		})
 	})
