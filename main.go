@@ -9,7 +9,6 @@ import (
 func main() {
 	router := chi.NewRouter()
 	router.Use(middleware.URLFormat)
-	//router.Use(render.SetContentType(render.ContentTypeJSON))
 
 	router.Route("/api", func(router chi.Router) {
 		router.Route("/objects", func(router chi.Router) {

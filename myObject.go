@@ -1,12 +1,13 @@
 package main
 
 type MyObject struct {
-	Key   string
-	Value string
+	Key         string
+	Value       []uint8
+	ContentType string
 }
 
 var myObjects = []*MyObject{
-	{Key: "abc", Value: "123"},
+	{"abc", []uint8("Tralalala"), "text/plain"},
 }
 
 func getObject(list []*MyObject, key string) (int, *MyObject) {

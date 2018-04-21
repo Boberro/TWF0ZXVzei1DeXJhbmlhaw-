@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"github.com/go-chi/chi"
 	"io/ioutil"
+	"strconv"
 )
 
 func ViewObjectKeysGet(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +22,7 @@ func ViewObjectGet(w http.ResponseWriter, r *http.Request) {
 
 	_, obj := getObject(myObjects, objectKey)
 	if obj != nil {
+		w.Header().Set("Content-Type", obj.ContentType)
 		w.Write([]byte(obj.Value))
 	} else {
 		w.WriteHeader(http.StatusNotFound)
@@ -35,15 +37,28 @@ func ViewObjectPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request, _ := ioutil.ReadAll(r.Body)
-	data := string(request)
+	contentSize, err := strconv.Atoi(r.Header.Get("Content-Length"))
+	if err != nil || contentSize > 100000000 {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	if len(r.Header.Get("Content-Type")) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Content-Type header required"))
+		return
+	}
+
+	postData, _ := ioutil.ReadAll(r.Body)
 
 	i, obj := getObject(myObjects, objectKey)
 	if obj != nil {
-		myObjects[i].Value = data
+		myObjects[i].Value = postData
+		myObjects[i].ContentType = r.Header.Get("Content-Type")
 	} else {
-		myObjects = append(myObjects, &MyObject{objectKey, data})
+		myObjects = append(myObjects, &MyObject{objectKey, postData, r.Header.Get("Content-Type")})
 	}
+	w.Write([]byte(r.Header.Get("Content-Length")))
 }
 
 func ViewObjectDelete(w http.ResponseWriter, r *http.Request) {
