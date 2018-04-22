@@ -23,12 +23,15 @@ func ViewObjectKeysGet(w http.ResponseWriter, _ *http.Request) {
 
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
 			if !strings.HasSuffix(string(k), "-content_type") { // <- very ugly, I know
-				keys = append(keys, string(k))
+				keys = append(keys, "\""+string(k)+"\"")
 			}
 		}
 		return nil
 	})
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("["))
 	w.Write([]byte(strings.Join(keys, ", ")))
+	w.Write([]byte("]"))
 }
 
 func ViewObjectGet(w http.ResponseWriter, r *http.Request) {
