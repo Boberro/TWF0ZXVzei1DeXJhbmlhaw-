@@ -8,9 +8,19 @@ import (
 	"os"
 	"os/signal"
 	"context"
+	"flag"
 )
 
+var doSetup = flag.Bool("setup", false, "Generate database with demo data")
+
 func main() {
+	flag.Parse()
+
+	if *doSetup {
+		setup()
+		return
+	}
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 
