@@ -4,9 +4,22 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"net/http"
+	"log"
+	"os"
+	"os/signal"
+	"context"
 )
 
 func main() {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+
+	// region DB
+	dbConnect()
+	defer dbClose()
+	// endregion DB
+
+	// region Router
 	router := chi.NewRouter()
 	router.Use(middleware.URLFormat)
 
@@ -22,6 +35,23 @@ func main() {
 			})
 		})
 	})
+	// endregion Router
 
-	http.ListenAndServe(":8080", router)
+	// region http server
+	server := &http.Server{Addr: ":8080", Handler: router}
+
+	go func() {
+		log.Println("Listening on port :8080")
+
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	<-stop
+
+	log.Println("\nShutting down the server...")
+
+	server.Shutdown(context.Background())
+	// endregion http server
 }

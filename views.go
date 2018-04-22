@@ -5,12 +5,30 @@ import (
 	"github.com/go-chi/chi"
 	"io/ioutil"
 	"strconv"
+	"github.com/boltdb/bolt"
+	"fmt"
+	"log"
+	"strings"
 )
 
-func ViewObjectKeysGet(w http.ResponseWriter, r *http.Request) {
-	for _, obj := range myObjects {
-		w.Write([]byte(obj.Key + ", "))
-	}
+func ViewObjectKeysGet(w http.ResponseWriter, _ *http.Request) {
+	keys := make([]string, 0)
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("objects"))
+		if b == nil {
+			return nil
+		}
+
+		c := b.Cursor()
+
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			if !strings.HasSuffix(string(k), "-content_type") { // <- very ugly, I know
+				keys = append(keys, string(k))
+			}
+		}
+		return nil
+	})
+	w.Write([]byte(strings.Join(keys, ", ")))
 }
 
 func ViewObjectGet(w http.ResponseWriter, r *http.Request) {
@@ -20,11 +38,24 @@ func ViewObjectGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, obj := getObject(myObjects, objectKey)
-	if obj != nil {
-		w.Header().Set("Content-Type", obj.ContentType)
-		w.Write([]byte(obj.Value))
-	} else {
+	err := db.View(func(tx *bolt.Tx) error {
+		contentTypeKey := objectKey + "-content_type"
+
+		b := tx.Bucket([]byte("objects"))
+		if b == nil {
+			return fmt.Errorf("bucket not found")
+		}
+		value := b.Get([]byte(objectKey))
+		if len(value) == 0 {
+			return fmt.Errorf("key not found")
+		}
+
+		contentType := b.Get([]byte(contentTypeKey))
+		w.Header().Set("Content-Type", string(contentType))
+		w.Write([]byte(value))
+		return nil
+	})
+	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -42,6 +73,10 @@ func ViewObjectPut(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		return
 	}
+	if contentSize == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	if len(r.Header.Get("Content-Type")) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
@@ -51,14 +86,25 @@ func ViewObjectPut(w http.ResponseWriter, r *http.Request) {
 
 	postData, _ := ioutil.ReadAll(r.Body)
 
-	i, obj := getObject(myObjects, objectKey)
-	if obj != nil {
-		myObjects[i].Value = postData
-		myObjects[i].ContentType = r.Header.Get("Content-Type")
-	} else {
-		myObjects = append(myObjects, &MyObject{objectKey, postData, r.Header.Get("Content-Type")})
+	err = db.Update(func(tx *bolt.Tx) error {
+		contentTypeKey := objectKey + "-content_type"
+
+		b, err := tx.CreateBucketIfNotExists([]byte("objects"))
+		if err != nil {
+			return err
+		}
+
+		err = b.Put([]byte(objectKey), []byte(postData))
+		if err != nil {
+			return err
+		}
+
+		return b.Put([]byte(contentTypeKey), []byte(r.Header.Get("Content-Type")))
+	})
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Fatal(err)
 	}
-	w.Write([]byte(r.Header.Get("Content-Length")))
 }
 
 func ViewObjectDelete(w http.ResponseWriter, r *http.Request) {
@@ -68,10 +114,26 @@ func ViewObjectDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	i, obj := getObject(myObjects, objectKey)
-	if obj != nil {
-		myObjects = append(myObjects[:i], myObjects[i+1:]...)
-	} else {
+	err := db.Update(func(tx *bolt.Tx) error {
+		contentTypeKey := objectKey + "-content_type"
+
+		b := tx.Bucket([]byte("objects"))
+		if b == nil {
+			return fmt.Errorf("bucket not found")
+		}
+
+		value := b.Get([]byte(objectKey))
+		if len(value) == 0 {
+			return fmt.Errorf("key not found")
+		}
+
+		err := b.Delete([]byte(objectKey))
+		if err == nil {
+			err = b.Delete([]byte(contentTypeKey))
+		}
+		return err
+	})
+	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
