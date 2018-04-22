@@ -33,7 +33,7 @@ func ViewObjectKeysGet(w http.ResponseWriter, _ *http.Request) {
 
 func ViewObjectGet(w http.ResponseWriter, r *http.Request) {
 	objectKey := chi.URLParam(r, "objectKey")
-	if !validata_key(objectKey) {
+	if !validateKey(objectKey) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -63,7 +63,7 @@ func ViewObjectGet(w http.ResponseWriter, r *http.Request) {
 
 func ViewObjectPut(w http.ResponseWriter, r *http.Request) {
 	objectKey := chi.URLParam(r, "objectKey")
-	if !validata_key(objectKey) {
+	if !validateKey(objectKey) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -109,7 +109,7 @@ func ViewObjectPut(w http.ResponseWriter, r *http.Request) {
 
 func ViewObjectDelete(w http.ResponseWriter, r *http.Request) {
 	objectKey := chi.URLParam(r, "objectKey")
-	if !validata_key(objectKey) {
+	if !validateKey(objectKey) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

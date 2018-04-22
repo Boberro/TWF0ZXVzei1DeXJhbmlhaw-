@@ -2,7 +2,7 @@ package main
 
 import "regexp"
 
-func validata_key(key string) bool {
+func validateKey(key string) bool {
 	if len(key) > 100 {
 		return false
 	}
